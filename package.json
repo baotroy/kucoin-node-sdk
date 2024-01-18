@@ -7,7 +7,8 @@
     "dev": "cross-env PRODUCTION=dev nodemon demo/index.js",
     "dev-ws": "cross-env PRODUCTION=dev nodemon demo/ticker_demo.js",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
-    "test": "jest"
+    "test": "jest",
+    "trade": "node --no-warnings app/index.js"
   },
   "repository": {
     "type": "git",
@@ -17,6 +18,7 @@
   "dependencies": {
     "dot-prop": "^4.2.1",
     "event-emitter": "^0.3.5",
+    "fs": "^0.0.1-security",
     "lodash": "^4.17.15",
     "log-update": "^4.0.0",
     "md5": "^2.2.1",
