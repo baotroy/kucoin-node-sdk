@@ -4,7 +4,15 @@ const { v4 } = require("uuid");
 const BN = require("bignumber.js");
 const API = require("../src");
 
+const CODES = {
+  SUCCESS: "200000",
+  MANY_REQUEST: "429000",
+  NOT_SUPPORT: "400350",
+  QUANTITI_ERROR: "400100",
+};
+
 const symbol = `${process.env.symbol.toUpperCase()}-USDT`;
+console.log("symbol", symbol);
 
 const tickerTopics = {
   symbolTicker: `/market/ticker:${symbol}`,
@@ -72,7 +80,6 @@ const callbackId = datafeed.subscribe(tickerTopics.allSymbolsTicker, (message) =
      */
 
     if (init && message?.data?.price) {
-      init = false;
       const { bestAsk, bestBid, bestAskSize, bestBidSize } = message.data;
       const priceAskDecimals = bestAsk.substring(bestAsk.indexOf(".") + 1).length;
       const priceBidDecimals = bestBid.substring(bestBid.indexOf(".") + 1).length;
@@ -83,10 +90,10 @@ const callbackId = datafeed.subscribe(tickerTopics.allSymbolsTicker, (message) =
       const sizeDecimals = Math.max(sizeAskDecimals, sizeBidDecimals);
 
       const currentPrice = new BN(message.data.price);
-      const percent = new BN(1);
+      const percent = new BN(1.05);
       const price = toFixed(currentPrice.multipliedBy(percent).toString(), priceDecimals);
-      const amountToSpend = 10; // USDT
-      const size = toFixed(new BN(amountToSpend).dividedBy(new BN(price)).toString(), sizeDecimals);
+      const amountToSpend = process.env.amount || 10; // USDT
+      const size = toFixed(new BN(amountToSpend).dividedBy(new BN(price)).toString(), 0);
       const baseParams = {
         clientOid: v4(),
         side: "buy",
@@ -94,16 +101,21 @@ const callbackId = datafeed.subscribe(tickerTopics.allSymbolsTicker, (message) =
         type: "market",
       };
       const orderParams = {
-        // price,
+        price,
         size,
       };
+
       // Place order
-      rest.Trade.Orders.postOrder(baseParams, orderParams).then(console.log);
+      rest.Trade.Orders.postOrder(baseParams, orderParams).then((result) => {
+        console.log(result);
+        if (result.code === CODES.SUCCESS) {
+          // Unsubscribe after timeout
+          init = false;
+          activeTimeout(50000);
+        }
+      });
       console.log(message.data);
       console.log(orderParams);
-
-      // Unsubscribe after timeout
-      activeTimeout(5000);
 
       // Write log
       fs.appendFileSync("data.txt", JSON.stringify(message.data) + "\n");
