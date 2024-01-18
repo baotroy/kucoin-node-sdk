@@ -97,7 +97,7 @@ const callbackId = datafeed.subscribe(tickerTopics.symbolTicker, (message) => {
       };
       // console.log(message.data);
       // console.log(orderParams);
-      // rest.Trade.Orders.postOrder(baseParams, orderParams).then(console.log);
+      rest.Trade.Orders.postOrder(baseParams, orderParams).then(console.log);
       console.log(message.data);
       console.log(orderParams);
       activeTimeout();
