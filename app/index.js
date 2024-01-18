@@ -98,7 +98,7 @@ const callbackId = datafeed.subscribe(tickerTopics.allSymbolsTicker, (message) =
         clientOid: v4(),
         side: "buy",
         symbol,
-        type: "market",
+        type: "limit",
       };
       const orderParams = {
         price,
