@@ -1,12 +1,14 @@
+require("dotenv").config();
 const fs = require("fs");
 const { v4 } = require("uuid");
 const BN = require("bignumber.js");
 const API = require("../src");
 
-const symbol = "ETH-USDT";
+const symbol = `${process.env.symbol.toUpperCase()}-USDT`;
 
 const tickerTopics = {
   symbolTicker: `/market/ticker:${symbol}`,
+  allSymbolsTicker: "/market/ticker:all",
 };
 
 API.init(require("./config"));
@@ -43,8 +45,8 @@ datafeed.connectSocket();
 }
  */
 let init = true;
-const callbackId = datafeed.subscribe(tickerTopics.symbolTicker, (message) => {
-  if (message.topic === tickerTopics.symbolTicker) {
+const callbackId = datafeed.subscribe(tickerTopics.allSymbolsTicker, (message) => {
+  if (message.subject === symbol) {
     /*
      * @param baseParams
      *   - {string} clientOid - Unique order id created by users to identify their orders, e.g. UUID.
@@ -69,7 +71,7 @@ const callbackId = datafeed.subscribe(tickerTopics.symbolTicker, (message) => {
      *
      */
 
-    if (init && message.data.price) {
+    if (init && message?.data?.price) {
       init = false;
       const { bestAsk, bestBid, bestAskSize, bestBidSize } = message.data;
       const priceAskDecimals = bestAsk.substring(bestAsk.indexOf(".") + 1).length;
@@ -95,12 +97,15 @@ const callbackId = datafeed.subscribe(tickerTopics.symbolTicker, (message) => {
         // price,
         size,
       };
-      // console.log(message.data);
-      // console.log(orderParams);
+      // Place order
       rest.Trade.Orders.postOrder(baseParams, orderParams).then(console.log);
       console.log(message.data);
       console.log(orderParams);
-      activeTimeout();
+
+      // Unsubscribe after timeout
+      activeTimeout(5000);
+
+      // Write log
       fs.appendFileSync("data.txt", JSON.stringify(message.data) + "\n");
     } else {
       // datafeed.unsubscribe(tickerTopics.symbolTicker, callbackId);
@@ -109,12 +114,12 @@ const callbackId = datafeed.subscribe(tickerTopics.symbolTicker, (message) => {
   }
 });
 
-function activeTimeout() {
+function activeTimeout(timeout) {
   setTimeout(() => {
     // unsubscribe-symbolTicker
     datafeed.unsubscribe(tickerTopics.symbolTicker, callbackId);
     console.log(`unsubscribed: ${tickerTopics.symbolTicker} ${callbackId}`);
-  }, 5000);
+  }, timeout);
 }
 //////////////////////////////cancel subscribe//////////////////////////////////////
 

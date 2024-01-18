@@ -1,4 +1,3 @@
-require("dotenv").config();
 /**
  * copy to config.js, and write configure
  */
