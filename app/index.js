@@ -13,6 +13,7 @@ const CODES = {
 
 const pair = `${process.env.symbol.toUpperCase()}-USDT`;
 console.log("Pair", pair);
+const kickoffTime = Number(process.env.kickoff) * 1000;
 
 const tickerTopics = {
   // symbolTicker: `/market/ticker:${pair}`,
@@ -54,9 +55,12 @@ datafeed.connectSocket();
 }
  */
 let init = true;
-let sub = true;
 // const callbackId = datafeed.subscribe(tickerTopics.allSymbolsTicker, async (message) => {
 const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
+  const current = Date.now();
+  if (current <= kickoffTime) {
+    return;
+  }
   // if (message.subject === pair) {
   // if (1) {
   /*
