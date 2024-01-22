@@ -10,7 +10,7 @@ const CODES = {
   // NOT_SUPPORT: "400350",
   // QUANTITI_ERROR: "400100",
 };
-
+const TIMEOUT = 50000;
 const pair = `${process.env.symbol.toUpperCase()}-USDT`;
 console.log("Pair", pair);
 const kickoffTime = Number(process.env.kickoff) * 1000;
@@ -61,8 +61,6 @@ const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
   if (current <= kickoffTime) {
     return;
   }
-  // if (message.subject === pair) {
-  // if (1) {
   /*
    * @param baseParams
    *   - {string} clientOid - Unique order id created by users to identify their orders, e.g. UUID.
@@ -89,41 +87,74 @@ const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
 
   if (init && message?.data) {
     const { asks } = message.data;
-    const price = asks[1][0];
+    // const price = asks[1][0];
     const amountToSpend = process.env.amount || 10; // USDT
-    const size = toFixed(new BN(amountToSpend).dividedBy(new BN(price)).toString(), 0);
+    // const prices = ["0.00000099", "0.000001"];
+    // const sizes = ["1010101", "1000000"];
+    const [prices, sizes, amounts] = getTradeData(asks, new BN(amountToSpend));
+    // console.log({ prices, sizes, amounts });
+    // return;
+    // const size = toFixed(new BN(amountToSpend).dividedBy(new BN(price)).toString(), 0);
     const baseParams = {
       clientOid: v4(),
       side: "buy",
       symbol: pair,
       type: "limit",
     };
-    const orderParams = {
-      price,
-      size,
-    };
 
     // Place order
+    const promises = [];
     if (process.env.trade === "1") {
-      rest.Trade.Orders.postOrder(baseParams, orderParams).then((result) => {
-        console.log(result);
-        if (result.code === CODES.SUCCESS) {
-          init = false;
-        }
-      });
+      for (let i = 0; i < prices.length; i++) {
+        const orderParams = {
+          price: prices[i],
+          size: sizes[i],
+        };
+        promises.push(rest.Trade.Orders.postOrder(baseParams, orderParams));
+      }
+      const results = await Promise.all(promises);
+      const success = results.find((result) => result.code === CODES.SUCCESS);
+      if (success) {
+        init = false;
+        // Unsubscribe after timeout
+        activeTimeout(TIMEOUT);
+      }
+      console.log(orderParams);
     }
 
-    // Unsubscribe after timeout
-    activeTimeout(50000);
-    console.log(orderParams);
     // Write log
-    fs.appendFileSync("data.txt", JSON.stringify(message.data) + "\n");
+    fs.appendFileSync(`book-${pair}.txt`, JSON.stringify(message.data) + "\n");
   } else {
-    // datafeed.unsubscribe(tickerTopics.symbolTicker, callbackId);
-    fs.appendFileSync("data.txt", JSON.stringify(message.data) + "\n");
+    fs.appendFileSync(`else-${pair}.txt`, JSON.stringify(message) + "\n");
   }
-  // }
 });
+
+function getTradeData(asks, amountToSpend) {
+  const priceIndex = 0;
+  const sizeIndex = 1;
+  const prices = [];
+  const sizes = [];
+  const amounts = [];
+  for (let i = 0; i < asks.length; i++) {
+    const price = new BN(asks[i][priceIndex]);
+    const maxSize = new BN(toFixed(new BN(asks[i][sizeIndex]).toString(), 0));
+    const affordSize = new BN(toFixed(amountToSpend.dividedBy(new BN(price)).toString(), 0));
+    if (affordSize.gt(maxSize)) {
+      prices.push(price.toString());
+      sizes.push(maxSize.toString());
+      amounts.push(maxSize.multipliedBy(new BN(price)).toString());
+      amountToSpend = new BN(amountToSpend).minus(maxSize.multipliedBy(new BN(price))); // decrease amountToSpend for next price
+    } else {
+      prices.push(price.toString());
+      sizes.push(toFixed(affordSize.toString(), 0));
+      amounts.push(price.multipliedBy(affordSize).toString());
+
+      return [prices, sizes, amounts];
+    }
+  }
+
+  return [prices, sizes, amounts];
+}
 
 function activeTimeout(timeout) {
   setTimeout(() => {
