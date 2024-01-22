@@ -92,8 +92,8 @@ const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
     // const prices = ["0.00000099", "0.000001"];
     // const sizes = ["1010101", "1000000"];
     const [prices, sizes] = getTradeData(asks, new BN(amountToSpend));
+
     const baseParams = {
-      clientOid: v4(),
       side: "buy",
       symbol: pair,
       type: "limit",
@@ -103,6 +103,7 @@ const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
     const promises = [];
     if (process.env.trade === "1") {
       for (let i = 0; i < prices.length; i++) {
+        baseParams.clientOid = v4();
         const orderParams = {
           price: prices[i],
           size: sizes[i],
@@ -110,19 +111,20 @@ const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
         promises.push(rest.Trade.Orders.postOrder(baseParams, orderParams));
       }
       const results = await Promise.all(promises);
+      console.log("results", results);
       const success = results.find((result) => result.code === CODES.SUCCESS);
       if (success) {
         init = false;
         // Unsubscribe after timeout
         activeTimeout(TIMEOUT);
       }
-      console.log(orderParams);
     }
 
     // Write log
+    fs.appendFileSync(`trade-${pair}.txt`, JSON.stringify({ prices, sizes }) + "\n");
     fs.appendFileSync(`book-${pair}.txt`, JSON.stringify(message.data) + "\n");
   } else {
-    fs.appendFileSync(`else-${pair}.txt`, JSON.stringify(message) + "\n");
+    fs.appendFileSync(`else-${pair}.txt`, JSON.stringify(message.data) + "\n");
   }
 });
 
