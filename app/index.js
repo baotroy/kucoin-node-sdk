@@ -92,7 +92,10 @@ const callbackId = datafeed.subscribe(tickerTopics.bestAsk, async (message) => {
     // const prices = ["0.00000099", "0.000001"];
     // const sizes = ["1010101", "1000000"];
     const [prices, sizes] = getTradeData(asks, new BN(amountToSpend));
-
+    // console.log("asks", asks);
+    // console.log("prices", prices);
+    // console.log("sizes", sizes);
+    // return;
     const baseParams = {
       side: "buy",
       symbol: pair,
@@ -137,14 +140,14 @@ function getTradeData(asks, amountToSpend) {
   for (let i = 0; i < asks.length; i++) {
     const price = new BN(asks[i][priceIndex]);
     const maxSize = new BN(toFixed(new BN(asks[i][sizeIndex]).toString(), 0));
-    const affordSize = new BN(toFixed(amountToSpend.dividedBy(new BN(price)).toString(), 0));
+    const affordSize = new BN(toFixed(amountToSpend.dividedBy(price).toString(), 0));
     if (affordSize.gt(maxSize)) {
       prices.push(price.toString());
       sizes.push(maxSize.toString());
-      amountToSpend = new BN(amountToSpend).minus(maxSize.multipliedBy(new BN(price))); // decrease amountToSpend for next price
+      amountToSpend = amountToSpend.minus(maxSize.multipliedBy(price)); // decrease amountToSpend for next price
     } else {
       prices.push(price.toString());
-      sizes.push(toFixed(affordSize.toString(), 0));
+      sizes.push(affordSize.toString(), 0);
 
       return [prices, sizes];
     }
