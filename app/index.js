@@ -136,7 +136,7 @@ function getTradeData(asks, amountToSpend) {
   const sizeIndex = 1;
   const prices = [];
   const sizes = [];
-  // const amounts = [];
+
   for (let i = 0; i < asks.length; i++) {
     const price = new BN(asks[i][priceIndex]);
     const maxSize = new BN(toFixed(new BN(asks[i][sizeIndex]).toString(), 0));
